@@ -12,7 +12,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
-	"github.com/hacdias/ownyourtrakt/trakt"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/unrolled/render"
 )
@@ -23,7 +22,7 @@ var (
 	traktClientSecret = os.Getenv("TRAKT_SECRET")
 	port              = os.Getenv("PORT")
 	store             = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
-	db                *database
+	users             *usersDB
 )
 
 func init() {
@@ -32,11 +31,11 @@ func init() {
 
 func main() {
 	var err error
-	db, err = newDatabase("./database.db")
+	users, err = newUsersDB("./database.db")
 	if err != nil {
 		panic(err)
 	}
-	defer db.close()
+	defer users.close()
 
 	renderer := render.New(render.Options{
 		Layout: "layout",
@@ -58,6 +57,7 @@ func main() {
 	r.HandleFunc("/auth/logout", authLogoutHandler)
 	r.HandleFunc("/auth/start", authStartHandler)
 	r.HandleFunc("/auth/callback", authCallbackHandler)
+
 	r.HandleFunc("/trakt/start", traktStartHandler)
 	r.HandleFunc("/trakt/callback", traktCallbackHandler)
 
@@ -107,7 +107,7 @@ func importHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	var history trakt.History
+	var history traktHistory
 
 	err = json.NewDecoder(resp.Body).Decode(&history)
 	if err != nil {
