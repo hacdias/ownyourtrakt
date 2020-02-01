@@ -2,9 +2,6 @@ package main
 
 import (
 	"encoding/gob"
-	"encoding/json"
-	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -61,7 +58,7 @@ func main() {
 	r.HandleFunc("/trakt/start", traktStartHandler)
 	r.HandleFunc("/trakt/callback", traktCallbackHandler)
 
-	r.HandleFunc("/import", importHandler)
+	r.HandleFunc("/trakt/import", traktImportHandler)
 
 	http.Handle("/", r)
 
@@ -73,49 +70,4 @@ func main() {
 	}
 
 	log.Fatal(srv.ListenAndServe())
-}
-
-func importHandler(w http.ResponseWriter, r *http.Request) {
-	user, _ := mustUser(w, r)
-	if user == nil {
-		return
-	}
-
-	/*
-		X-Pagination-Page	Current page.
-		X-Pagination-Limit	Items per page.
-		X-Pagination-Page-Count	Total number of pages.
-		X-Pagination-Item-Count	Total number of items.
-	*/
-
-	res, err := http.NewRequest("GET", "https://api.trakt.tv/sync/history", nil)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	res.Header.Set("Content-Type", "application/json")
-	res.Header.Set("Accept", "application/json")
-	res.Header.Set("trakt-api-key", traktClientID)
-	res.Header.Set("trakt-api-version", "2")
-	res.Header.Set("Authorization", "Bearer "+user.TraktOauth.AccessToken)
-
-	resp, err := http.DefaultClient.Do(res)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer resp.Body.Close()
-
-	var history traktHistory
-
-	err = json.NewDecoder(resp.Body).Decode(&history)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	fmt.Println(history)
-	io.Copy(w, resp.Body)
 }
