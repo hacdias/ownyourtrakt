@@ -107,3 +107,24 @@ pre {
   font-size: 0.8rem;
   margin: 0;
 }
+
+input {
+  padding: .5rem;
+  border: 1px solid #ddd;
+  outline: 0;
+  border-radius: 0;
+  background: #fff;
+  color: #333;
+}
+
+input[type="submit"],
+button {
+  background-color: #2392ff;
+  border: 1px solid #2392ff;
+  font-weight: 700;
+  padding: .5rem 1rem;
+  color: #fff;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 0;
+}
