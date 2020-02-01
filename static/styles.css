@@ -1,0 +1,109 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  line-height: 1.25;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-family: -apple-system,
+    BlinkMacSystemFont,
+    avenir next,
+    avenir,
+    helvetica,
+    helvetica neue,
+    ubuntu,
+    roboto,
+    noto,
+    segoe ui,
+    arial,
+    sans-serif;
+}
+
+header {
+  background: black;
+  color: white;
+}
+
+main,
+header > div {
+  max-width: 60rem;
+  margin: 0 auto;
+  width: 90%;
+}
+
+header ul {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  display: flex;
+}
+
+header li {
+  padding: 0;
+  margin: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+header li:first-of-type {
+  font-weight: bolder;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+header a:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+header li#domain {
+  margin-left: auto;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+header span,
+header a {
+  color: white;
+  padding: 1rem;
+  display: block;
+  text-decoration: none;
+}
+
+table {
+  display: block;
+  overflow: auto;
+  border-collapse: collapse;
+}
+
+table th {
+  font-weight: 600;
+}
+
+table th,
+table td {
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+}
+
+table td:first-of-type {
+  width: 10rem;
+}
+
+table tr {
+  background-color: table(--white);
+  border-top: 1px solid #ddd;
+}
+
+table tr:nth-child(2n) {
+  background-color: #fafafa;
+}
+
+pre {
+  white-space: normal;
+  word-break: break-all;
+  background: #f5faff;
+  border: 1px solid #aed7ff;
+  padding: 0.5rem;
+  font-size: 0.8rem;
+  margin: 0;
+}

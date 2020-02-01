@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Own Your Trakt</title>
+    <link rel="stylesheet" href="/static/normalize.css">
+    <link rel="stylesheet" href="/static/styles.css">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  </head>
+  <body>
+    <header>
+      <div>
+        <ul>
+          <li><a href="/">OwnYourTrakt</a></li>
+          {{ if .User }}
+            <li><a href="/trakt/start">Reconnect Trakt</a></li>
+            <li id="domain"><span>{{ .User.Domain }}</span></li>
+            <li><a href="/auth/logout">Logout</a></li>
+          {{ end }}
+        </ul>
+      </div>
+    </header>
+
+    <main>
+      {{ yield }}
+    </main>
+
+    <!-- render the partial template called `footer-$current_template` here -->
+    {{ partial "footer" }}
+  </body>
+</html>
