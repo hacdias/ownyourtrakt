@@ -1,4 +1,8 @@
 {{- if .User -}}
+  {{- if .Importing -}}
+    <p><strong>Your Trakt records are currently being imported.</strong></p>
+  {{- end -}}
+
   <h1>Your data</h1>
 
   <table>

@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -21,6 +22,12 @@ var (
 	store             = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
 	users             *usersDB
 	renderer          *render.Render
+	processes         = struct {
+		sync.Mutex
+		DomainRunning map[string]bool
+	}{
+		DomainRunning: map[string]bool{},
+	}
 )
 
 func init() {
@@ -46,9 +53,19 @@ func main() {
 
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		user, _ := getUser(w, r)
+		importing := false
+
+		if user != nil {
+			processes.Lock()
+			if imp, ok := processes.DomainRunning[user.Domain]; ok {
+				importing = imp
+			}
+			processes.Unlock()
+		}
 
 		renderer.HTML(w, http.StatusOK, "home", map[string]interface{}{
-			"User": user,
+			"User":      user,
+			"Importing": importing,
 		})
 	})
 

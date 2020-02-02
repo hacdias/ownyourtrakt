@@ -91,6 +91,10 @@ func traktImport(user *user) {
 			break
 		}
 	}
+
+	processes.Lock()
+	processes.DomainRunning[user.Domain] = false
+	processes.Unlock()
 }
 
 func traktImportHandler(w http.ResponseWriter, r *http.Request) {
@@ -99,6 +103,19 @@ func traktImportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	processes.Lock()
+	running, ok := processes.DomainRunning[user.Domain]
+
+	if running && ok {
+		// Already being imported... just redirect!
+		processes.Unlock()
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+
+	processes.DomainRunning[user.Domain] = true
+	processes.Unlock()
+
 	go traktImport(user)
-	http.Redirect(w, r, "/?import=async", http.StatusTemporaryRedirect)
+	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 }
