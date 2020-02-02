@@ -98,6 +98,14 @@ table tr:nth-child(2n) {
   background-color: #fafafa;
 }
 
+table td p:first-child {
+  margin-top: 0;
+}
+
+table td p:last-child {
+  margin-bottom: 0;
+}
+
 pre {
   white-space: normal;
   word-break: break-all;

@@ -20,6 +20,7 @@ var (
 	port              = os.Getenv("PORT")
 	store             = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
 	users             *usersDB
+	renderer          *render.Render
 )
 
 func init() {
@@ -34,7 +35,7 @@ func main() {
 	}
 	defer users.close()
 
-	renderer := render.New(render.Options{
+	renderer = render.New(render.Options{
 		Layout: "layout",
 	})
 
@@ -46,7 +47,7 @@ func main() {
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		user, _ := getUser(w, r)
 
-		renderer.HTML(w, http.StatusOK, "example", map[string]interface{}{
+		renderer.HTML(w, http.StatusOK, "home", map[string]interface{}{
 			"User": user,
 		})
 	})

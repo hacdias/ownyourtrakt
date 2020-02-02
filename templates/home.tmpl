@@ -1,4 +1,4 @@
-{{ if .User }}
+{{- if .User -}}
   <h1>Your data</h1>
 
   <table>
@@ -25,20 +25,26 @@
     <tr>
       <td>Trakt Connection</td>
       <td>
-        {{ if .User.TraktOauth.AccessToken }}
-          You seem to be successfully connected to Trakt.
-
+        {{- if .User.TraktOauth.AccessToken -}}
+          <p>You seem to be successfully connected to Trakt.</p>
           <pre>{{ .User.TraktOauth.AccessToken }}</pre>
-        {{ else }}
-          You're not connected to Trakt.
-        {{ end }}
+        {{- else -}}
+          <p>You're not connected to Trakt.</p>
+        {{- end -}}
+      </td>
+    </tr>
+    <tr>
+      <td>Last Entry Fetched</td>
+      <td>
+        <p>Time: {{ .User.LastFetchedTime }}</p>
+        <p>ID: {{ .User.LastFetchedID }}</p>
       </td>
     </tr>
   </table>
-{{ else }}
+{{- else -}}
   <h1>Login</h1>
   <form action="/auth/start" method="GET">
     <input name="me" type="url" placeholder="https://your.name.com">
     <input type="submit" value="Login">
   </form>
-{{ end }}
+{{- end -}}

@@ -37,15 +37,16 @@ func authStartHandler(w http.ResponseWriter, r *http.Request) {
 	me := r.URL.Query().Get("me")
 	url, err := url.Parse(me)
 	if err != nil || url.Host == "" {
-		w.WriteHeader(http.StatusBadRequest)
+		logError(w, r, nil, http.StatusBadRequest, errors.New("invalid domain provided"))
 		return
 	}
+
 	url.Path = "/"
 	me = url.String()
 
 	endpoints, err := discoverEndpoints(me)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		logError(w, r, nil, http.StatusBadRequest, err)
 		return
 	}
 
@@ -53,7 +54,7 @@ func authStartHandler(w http.ResponseWriter, r *http.Request) {
 
 	session, err := store.Get(r, "ownyourtrakt")
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		logError(w, r, nil, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -64,13 +65,13 @@ func authStartHandler(w http.ResponseWriter, r *http.Request) {
 
 	authURL, err := buildAuthorizationURL(endpoints.IndieAuth, me, clientID+"/auth/callback", clientID, state, scope)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		logError(w, r, nil, http.StatusInternalServerError, err)
 		return
 	}
 
 	err = session.Save(r, w)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		logError(w, r, nil, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -80,8 +81,7 @@ func authStartHandler(w http.ResponseWriter, r *http.Request) {
 		u.Domain = me
 		u.Endpoints = *endpoints
 	} else {
-		log.Println(err)
-		log.Printf("user %s is new\n", me)
+		log.Printf("user %s is new or error fetching from the DB: %s\n", me, err)
 		u = &user{
 			Domain:    me,
 			Endpoints: *endpoints,
@@ -90,7 +90,7 @@ func authStartHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = users.save(u)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		logError(w, r, nil, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -100,55 +100,51 @@ func authStartHandler(w http.ResponseWriter, r *http.Request) {
 func authCallbackHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := store.Get(r, "ownyourtrakt")
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		logError(w, r, nil, http.StatusInternalServerError, err)
 		return
 	}
 
 	originalState, ok := session.Values["auth_state"].(string)
 	if !ok || originalState == "" {
-		// TODO: redirect to start
-		w.WriteHeader(http.StatusBadRequest)
+		// log in session was not started, restart
+		http.Redirect(w, r, "/auth/start", http.StatusTemporaryRedirect)
 		return
 	}
 
 	me, ok := session.Values["auth_me"].(string)
 	if !ok {
-		// TODO: redirect to start
-		w.WriteHeader(http.StatusBadRequest)
+		// log in session was not started, restart
+		http.Redirect(w, r, "/auth/start", http.StatusTemporaryRedirect)
 		return
 	}
 
 	code := r.URL.Query().Get("code")
 	if code == "" {
-		// TODO: redirect to start
-		w.WriteHeader(http.StatusBadRequest)
+		logError(w, r, nil, http.StatusBadRequest, errors.New("code was empty"))
 		return
 	}
 
 	state := r.URL.Query().Get("state")
 	if state == "" {
-		// TODO: redirect to start
-		w.WriteHeader(http.StatusBadRequest)
+		logError(w, r, nil, http.StatusBadRequest, errors.New("state was empty"))
 		return
 	}
 
 	if state != originalState {
-		w.WriteHeader(http.StatusUnauthorized)
+		logError(w, r, nil, http.StatusBadRequest, errors.New("state was invalid"))
 		return
 	}
 
 	u, err := users.get(me)
 	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		logError(w, r, nil, http.StatusInternalServerError, err)
 		return
 	}
 
 	if u.AccessToken == "" {
 		token, err := getToken(me, code, clientID+"/auth/callback", clientID, state, u.Endpoints.Tokens)
 		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			logError(w, r, u, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -160,8 +156,7 @@ func authCallbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = users.save(u)
 	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		logError(w, r, u, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -170,8 +165,7 @@ func authCallbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = session.Save(r, w)
 	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		logError(w, r, u, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -181,14 +175,14 @@ func authCallbackHandler(w http.ResponseWriter, r *http.Request) {
 func authLogoutHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := store.Get(r, "ownyourtrakt")
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		logError(w, r, nil, http.StatusInternalServerError, err)
 		return
 	}
 
 	session.Values = map[interface{}]interface{}{}
 	err = session.Save(r, w)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		logError(w, r, nil, http.StatusInternalServerError, err)
 		return
 	}
 

@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"log"
+	"errors"
 	"net/http"
 	"net/url"
 )
@@ -58,8 +58,7 @@ func traktStartHandler(w http.ResponseWriter, r *http.Request) {
 
 	u, err := url.Parse("https://trakt.tv/oauth/authorize")
 	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		logError(w, r, user, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -76,8 +75,7 @@ func traktStartHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = session.Save(r, w)
 	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		logError(w, r, user, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -92,18 +90,20 @@ func traktCallbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	originalState, ok := session.Values["trakt_state"].(string)
 	if !ok {
-		w.WriteHeader(http.StatusBadRequest)
+		// redirect to login because trakt session was not started
+		http.Redirect(w, r, "/trakt/start", http.StatusTemporaryRedirect)
 		return
 	}
+
 	state := r.URL.Query().Get("state")
 	if state != originalState {
-		w.WriteHeader(http.StatusBadRequest)
+		logError(w, r, user, http.StatusBadRequest, errors.New("state was invalid"))
 		return
 	}
 
 	code := r.URL.Query().Get("code")
 	if code == "" {
-		w.WriteHeader(http.StatusBadRequest)
+		logError(w, r, user, http.StatusBadRequest, errors.New("code was empty"))
 		return
 	}
 
@@ -115,7 +115,7 @@ func traktCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		GrantType:    "authorization_code",
 	})
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
+		logError(w, r, user, http.StatusUnauthorized, err)
 		return
 	}
 
@@ -123,8 +123,7 @@ func traktCallbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = users.save(user)
 	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		logError(w, r, user, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -132,8 +131,7 @@ func traktCallbackHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = session.Save(r, w)
 	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		logError(w, r, user, http.StatusInternalServerError, err)
 		return
 	}
 
