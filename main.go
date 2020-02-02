@@ -75,7 +75,7 @@ func main() {
 
 	r.HandleFunc("/trakt/start", traktStartHandler)
 	r.HandleFunc("/trakt/callback", traktCallbackHandler)
-
+	r.HandleFunc("/trakt/import/reset", traktResetHandler)
 	r.HandleFunc("/trakt/import", traktImportHandler)
 
 	http.Handle("/", r)

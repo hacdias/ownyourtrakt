@@ -29,7 +29,7 @@ type oauthResponse struct {
 func authorize(endpoint string, oauthReq *oauthRequest) (*oauthResponse, error) {
 	js, err := json.Marshal(oauthReq)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(js))
@@ -37,7 +37,7 @@ func authorize(endpoint string, oauthReq *oauthRequest) (*oauthResponse, error) 
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 

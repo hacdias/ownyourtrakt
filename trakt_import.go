@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
-	"fmt"
+	"errors"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -64,6 +66,99 @@ func importRequest(user *user, page int, startAt time.Time) (traktHistory, bool,
 	return history, currentPage < totalPages, nil
 }
 
+func traktToMicroformats(item traktHistoryItem) (interface{}, error) {
+	watch := map[string]interface{}{}
+	watch["type"] = []string{item.Type}
+
+	if item.Type == "episode" {
+		show := map[string]interface{}{}
+
+		show["title"] = []string{item.Show.Title}
+		show["year"] = []int{item.Show.Year}
+		show["url"] = []string{"https://trakt.tv/shows/" + item.Show.IDs.Slug}
+		show["ids"] = item.Show.IDs
+
+		watch["title"] = []string{item.Episode.Title}
+		watch["season"] = []int{item.Episode.Season}
+		watch["episode"] = []int{item.Episode.Number}
+		watch["url"] = []string{
+			"https://trakt.tv/shows/" +
+				item.Show.IDs.Slug +
+				"/seasons/" +
+				strconv.Itoa(item.Episode.Season) +
+				"/episodes/" +
+				strconv.Itoa(item.Episode.Number),
+		}
+		watch["ids"] = item.Episode.IDs
+		watch["show"] = []interface{}{
+			map[string]interface{}{
+				"type":       []string{"h-card"},
+				"properties": show,
+			},
+		}
+	} else if item.Type == "movie" {
+		watch["title"] = []string{item.Movie.Title}
+		watch["year"] = []int{item.Movie.Year}
+		watch["url"] = []string{"https://trakt.tv/movies/" + item.Movie.IDs.Slug}
+		watch["ids"] = item.Movie.IDs
+	} else {
+		return nil, errors.New("invalid type " + item.Type)
+	}
+
+	mf2 := map[string]interface{}{
+		"type": []string{"h-entry"},
+		"properties": map[string]interface{}{
+			"published": []string{item.WatchedAt.Format(time.RFC3339)},
+			"watch-of": []interface{}{
+				map[string]interface{}{
+					"type":       []string{"h-card"},
+					"properties": watch,
+				},
+			},
+		},
+	}
+
+	return mf2, nil
+}
+
+func sendMicropub(user *user, item traktHistoryItem) error {
+	micro, err := traktToMicroformats(item)
+	if err != nil {
+		return err
+	}
+
+	data, err := json.Marshal(micro)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", user.Endpoints.Micropub, bytes.NewBuffer(data))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+user.AccessToken)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusAccepted || resp.StatusCode == http.StatusCreated {
+		return nil
+	}
+
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return errors.New(user.Domain +
+		": status from micropub endpoint was " +
+		strconv.Itoa(resp.StatusCode) +
+		" body: " +
+		string(bodyBytes),
+	)
+}
+
 func traktImport(user *user) {
 	page := 1
 
@@ -90,8 +185,11 @@ func traktImport(user *user) {
 				}
 			}
 
-			fmt.Println(record)
-			// TODO: import
+			err = sendMicropub(user, record)
+			if err != nil {
+				log.Println("could not send micropub", err)
+				break
+			}
 		}
 
 		if hasNext {
@@ -112,6 +210,11 @@ func traktImportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if user.TraktOauth.AccessToken == "" {
+		http.Redirect(w, r, "/trakt/start", http.StatusTemporaryRedirect)
+		return
+	}
+
 	processes.Lock()
 	running, ok := processes.DomainRunning[user.Domain]
 
@@ -126,5 +229,23 @@ func traktImportHandler(w http.ResponseWriter, r *http.Request) {
 	processes.Unlock()
 
 	go traktImport(user)
+	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+}
+
+func traktResetHandler(w http.ResponseWriter, r *http.Request) {
+	user, _ := mustUser(w, r)
+	if user == nil {
+		return
+	}
+
+	user.LastFetchedTime = time.Time{}
+	user.LastFetchedID = 0
+
+	err := users.save(user)
+	if err != nil {
+		logError(w, r, user, http.StatusInternalServerError, err)
+		return
+	}
+
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 }
