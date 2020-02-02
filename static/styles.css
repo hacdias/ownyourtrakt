@@ -22,17 +22,32 @@ body {
     sans-serif;
 }
 
+a:visited,
+a {
+  color: inherit;
+}
+
+footer,
 header {
   background: black;
   color: white;
+}
+
+header {
   margin-bottom: 2rem;
 }
 
+footer {
+  margin-top: 5rem;
+  padding: 1rem 0;
+}
+
 main,
-header > div {
-  max-width: 60rem;
+header > div,
+footer > div {
+  width: 50rem;
   margin: 0 auto;
-  width: 90%;
+  max-width: 90%;
 }
 
 header ul {
