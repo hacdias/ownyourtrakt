@@ -40,8 +40,3 @@ type traktHistoryItem struct {
 }
 
 type traktHistory []traktHistoryItem
-
-type traktLastActivity struct {
-	All time.Time
-	// There's actually more but we don't care
-}
