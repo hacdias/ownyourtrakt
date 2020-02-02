@@ -25,6 +25,7 @@ body {
 header {
   background: black;
   color: white;
+  margin-bottom: 2rem;
 }
 
 main,
