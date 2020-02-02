@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func importRequest(user *user, page int, endAt time.Time) (traktHistory, bool, error) {
+func importRequest(user *user, page int, startAt time.Time) (traktHistory, bool, error) {
 	limit := 100
 	u, err := url.Parse("https://api.trakt.tv/sync/history")
 	if err != nil {
@@ -21,8 +21,8 @@ func importRequest(user *user, page int, endAt time.Time) (traktHistory, bool, e
 	q.Set("limit", strconv.Itoa(limit))
 	q.Set("page", strconv.Itoa(page))
 
-	if !endAt.IsZero() {
-		q.Set("end_at", endAt.Format(time.RFC3339Nano))
+	if !startAt.IsZero() {
+		q.Set("start_at", startAt.Format(time.RFC3339Nano))
 	}
 
 	u.RawQuery = q.Encode()
@@ -67,12 +67,6 @@ func importRequest(user *user, page int, endAt time.Time) (traktHistory, bool, e
 func traktImport(user *user) {
 	page := 1
 
-	// First get the last activity
-	// https://trakt.docs.apiary.io/#reference/sync/last-activities/get-last-activity
-	// Compare to what we have now
-	// Send only new
-	// Save failures id's
-
 	for {
 		history, hasNext, err := importRequest(user, page, user.LastFetchedTime)
 		if err != nil {
@@ -80,7 +74,22 @@ func traktImport(user *user) {
 			return
 		}
 
-		for _, record := range history {
+		for i, record := range history {
+			if record.WatchedAt.Equal(user.LastFetchedTime) && record.ID == user.LastFetchedID {
+				continue
+			}
+
+			if i == 0 && page == 1 {
+				user.LastFetchedTime = record.WatchedAt
+				user.LastFetchedID = record.ID
+
+				err = users.save(user)
+				if err != nil {
+					log.Println("could not save user while importing", err)
+					break
+				}
+			}
+
 			fmt.Println(record)
 			// TODO: import
 		}
