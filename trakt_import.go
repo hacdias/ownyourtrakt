@@ -68,7 +68,7 @@ func importRequest(user *user, page int, startAt time.Time) (traktHistory, bool,
 
 func traktToMicroformats(item traktHistoryItem) (interface{}, error) {
 	watch := map[string]interface{}{}
-	watch["type"] = []string{item.Type}
+	watch["trakt-id"] = []int64{item.ID}
 
 	if item.Type == "episode" {
 		show := map[string]interface{}{}

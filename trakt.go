@@ -30,7 +30,7 @@ type traktIDs struct {
 }
 
 type traktHistoryItem struct {
-	ID        int          `json:"id"`
+	ID        int64        `json:"id"`
 	WatchedAt time.Time    `json:"watched_at"`
 	Action    string       `json:"action"`
 	Type      string       `json:"type"`

@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/gob"
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -18,11 +20,15 @@ var (
 	clientID          = os.Getenv("BASE_URL")
 	traktClientID     = os.Getenv("TRAKT_ID")
 	traktClientSecret = os.Getenv("TRAKT_SECRET")
+	host              = os.Getenv("HOST")
 	port              = os.Getenv("PORT")
-	store             = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
-	users             *usersDB
-	renderer          *render.Render
-	processes         = struct {
+	sessionKey        = os.Getenv("SESSION_KEY")
+	databasePath      = os.Getenv("DATABASE_PATH")
+
+	store     *sessions.CookieStore
+	users     *usersDB
+	renderer  *render.Render
+	processes = struct {
 		sync.Mutex
 		DomainRunning map[string]bool
 	}{
@@ -32,6 +38,36 @@ var (
 
 func init() {
 	gob.Register(token{})
+
+	if traktClientID == "" {
+		panic(errors.New("TRAKT_ID must be set"))
+	}
+
+	if traktClientSecret == "" {
+		panic(errors.New("TRAKT_SECRET must be set"))
+	}
+
+	if sessionKey == "" {
+		panic(errors.New("SESSION_KEY must be set"))
+	}
+
+	if databasePath == "" {
+		panic(errors.New("DATABASE_PATH must be set"))
+	}
+
+	if host == "" {
+		host = "127.0.0.1"
+	}
+
+	if port == "" {
+		port = "8050"
+	}
+
+	if clientID == "" {
+		clientID = "http://" + host + ":" + port
+	}
+
+	store = sessions.NewCookieStore([]byte(sessionKey))
 }
 
 func main() {
@@ -41,6 +77,14 @@ func main() {
 		panic(err)
 	}
 	defer users.close()
+
+	me, _ := users.get("https://dev.hacdias.com/")
+	me.Endpoints.Micropub = "http://localhost:3030/micropub"
+	users.save(me)
+
+	// TODO: define micropub layout
+	// store already sent requests with URL
+	// store failed requests
 
 	renderer = render.New(render.Options{
 		Layout: "layout",
@@ -87,5 +131,6 @@ func main() {
 		ReadTimeout:  15 * time.Second,
 	}
 
+	fmt.Println("Listening on " + srv.Addr)
 	log.Fatal(srv.ListenAndServe())
 }

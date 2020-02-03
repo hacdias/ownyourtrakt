@@ -8,5 +8,6 @@ type user struct {
 	AccessToken     string
 	TraktOauth      oauthResponse
 	LastFetchedTime time.Time
-	LastFetchedID   int
+	LastFetchedID   int64
+	FailedIDs       []int64
 }
