@@ -1,6 +1,3 @@
-// TODO: make this simple CLI with a few commands
-// ownyourtrakt login - handles the trakt authentication and outputs required tokens in .env format
-// ownyourtrakt sync - syncs... once per day...
 package main
 
 import (
@@ -81,13 +78,14 @@ func main() {
 	}
 	defer users.close()
 
+	// TODO: remove this
 	me, _ := users.get("https://dev.hacdias.com/")
 	me.Endpoints.Micropub = "http://localhost:3030/micropub"
 	users.save(me)
 
-	// TODO: define micropub layout
-	// store already sent requests with URL
-	// store failed requests
+	// TODO: renew token when needed
+	// TODO: lock user savings
+	// TODO: embed layouts
 
 	renderer = render.New(render.Options{
 		Layout: "layout",

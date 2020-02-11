@@ -23,55 +23,55 @@ you want and you still have access to the IDs that can be used to fetch more inf
   ],
   "properties": {
     "published": [
-      "2020-01-17T19:46:33Z"
+      "2020-02-11T15:40:46Z"
     ],
     "watch-of": [
       {
         "properties": {
-          "title": [
-            "Episode 2"
-          ],
-          "type": [
-            "episode"
-          ],
-          "url": [
-            "https://trakt.tv/shows/sex-education/seasons/2/episodes/2"
-          ],
           "episode": [
-            2
+            14
           ],
           "season": [
-            2
+            3
+          ],
+          "title": [
+            "A Slump, a Cross and Roadside Gravel"
+          ],
+          "trakt-id": [
+            5611853642
+          ],
+          "url": [
+            "https://trakt.tv/shows/young-sheldon/seasons/3/episodes/14"
           ],
           "ids": {
-            "trakt": 3855303,
-            "imdb": "tt9699190",
-            "tmdb": 1994667,
-            "tvdb": 7480886
+            "trakt": 3935937,
+            "imdb": "tt11591958",
+            "tmdb": 2072445,
+            "tvdb": 7539973
           },
           "show": [
             {
-              "type": [
-                "h-card"
-              ],
               "properties": {
+                "ids": {
+                  "trakt": 119172,
+                  "imdb": "tt6226232",
+                  "tmdb": 71728,
+                  "slug": "young-sheldon",
+                  "tvdb": 328724
+                },
                 "title": [
-                  "Sex Education"
+                  "Young Sheldon"
                 ],
                 "url": [
-                  "https://trakt.tv/shows/sex-education"
+                  "https://trakt.tv/shows/young-sheldon"
                 ],
                 "year": [
-                  2019
-                ],
-                "ids": {
-                  "trakt": 140590,
-                  "imdb": "tt7767422",
-                  "tmdb": 81356,
-                  "slug": "sex-education",
-                  "tvdb": 356317
-                }
-              }
+                  2017
+                ]
+              },
+              "type": [
+                "h-card"
+              ]
             }
           ]
         },
