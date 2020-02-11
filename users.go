@@ -16,7 +16,6 @@ type user struct {
 	NewestFetchedID   int64
 	OldestFetchedTime time.Time
 	OldestFetchedID   int64
-	FailedIDs         []int64
 }
 
 type assetsFS struct {

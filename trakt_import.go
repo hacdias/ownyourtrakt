@@ -184,6 +184,8 @@ func traktImport(user *user, older bool, fetchNext bool) {
 			return
 		}
 
+		failed := false
+
 		for _, record := range history {
 			if record.WatchedAt.Equal(user.NewestFetchedTime) && record.ID == user.NewestFetchedID {
 				continue
@@ -195,17 +197,11 @@ func traktImport(user *user, older bool, fetchNext bool) {
 
 			err = sendMicropub(user, record)
 			if err != nil {
-				log.Printf("%s - could not send micropub: %v\n", user.Domain, err)
-				user.FailedIDs = append(user.FailedIDs, record.ID)
-
-				err = users.save(user)
-				if err != nil {
-					log.Fatalf("%s - could not save user: %v\n", user.Domain, err)
-				}
-
 				// Stop sending more if the micropub action is not successfull. Requires user
 				// action or wait for next cron job.
-				return
+				log.Printf("%s - could not send micropub: %v\n", user.Domain, err)
+				failed = true
+				break
 			}
 
 			if user.NewestFetchedTime.IsZero() || record.WatchedAt.After(user.NewestFetchedTime) {
@@ -225,7 +221,7 @@ func traktImport(user *user, older bool, fetchNext bool) {
 			}
 		}
 
-		if hasNext && fetchNext {
+		if hasNext && fetchNext && !failed {
 			page = page + 1
 		} else {
 			break
@@ -293,7 +289,6 @@ func traktResetHandler(w http.ResponseWriter, r *http.Request) {
 	user.OldestFetchedID = 0
 	user.NewestFetchedTime = user.OldestFetchedTime
 	user.NewestFetchedID = 0
-	user.FailedIDs = []int64{}
 
 	err := users.save(user)
 	if err != nil {

@@ -51,15 +51,6 @@
   <ul>
     <li><strong>Newest imported entry:</strong> {{ .User.NewestFetchedTime }}, id: {{ .User.NewestFetchedID }}</li>
     <li><strong>Oldest imported entry:</strong> {{ .User.OldestFetchedTime }}, id: {{ .User.OldestFetchedID }}</li>
-    {{- with .User.FailedIDs -}}
-      <li><strong>Failed:</strong>
-        <ul>
-          {{- range . -}}
-            <li>{{ . }} <a href="/trakt/import/retry?id={{ . }}">(retry)</a></li>
-          {{- end -}}
-        </ul>
-      </li>
-    {{- end -}}
   </ul>
 
   {{- if .Importing -}}
