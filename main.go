@@ -81,17 +81,12 @@ func main() {
 	}
 	defer users.close()
 
-	// TODO: remove this
-	me, _ := users.get("https://dev.hacdias.com/")
-	me.Endpoints.Micropub = "http://localhost:3030/micropub"
-	users.save(me)
-
 	// TODO: renew token when needed
 	// TODO: lock user savings
 
 	renderer = render.New(render.Options{
 		Layout:     "layout",
-		Directory:  ".",
+		Directory:  "/",
 		FileSystem: assetsFS{rice.MustFindBox("templates")},
 	})
 
@@ -137,6 +132,6 @@ func main() {
 		ReadTimeout:  15 * time.Second,
 	}
 
-	fmt.Println("Listening on " + srv.Addr)
+	fmt.Println("Listening on http://" + srv.Addr)
 	log.Fatal(srv.ListenAndServe())
 }
