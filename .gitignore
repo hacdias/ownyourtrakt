@@ -1,3 +1,4 @@
 *.db
 .env
 ownyourtrakt
+rice-box.go

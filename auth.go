@@ -286,10 +286,6 @@ func getToken(me, code, redirectURI, clientID, codeVerifier, endpoint string) (*
 	q.Set("code_verifier", codeVerifier)
 
 	u.RawQuery = q.Encode()
-	if err != nil {
-		return nil, err
-	}
-
 	req, err := http.NewRequest("POST", u.String(), nil)
 	req.Header.Set("Accept", "application/json")
 

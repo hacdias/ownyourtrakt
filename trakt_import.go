@@ -152,7 +152,7 @@ func sendMicropub(user *user, item traktHistoryItem) error {
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	return errors.New(user.Domain +
@@ -180,7 +180,7 @@ func traktImport(user *user, older bool, fetchNext bool) {
 		}
 
 		if err != nil {
-			log.Println(err)
+			log.Printf("%s - could not fetch trakt: %v\n", user.Domain, err)
 			return
 		}
 
@@ -195,33 +195,33 @@ func traktImport(user *user, older bool, fetchNext bool) {
 
 			err = sendMicropub(user, record)
 			if err != nil {
-				log.Println("could not send micropub", err)
-
+				log.Printf("%s - could not send micropub: %v\n", user.Domain, err)
 				user.FailedIDs = append(user.FailedIDs, record.ID)
+
 				err = users.save(user)
 				if err != nil {
-					log.Println("could not save user while importing", err)
+					log.Fatalf("%s - could not save user: %v\n", user.Domain, err)
 				}
+
+				// Stop sending more if the micropub action is not successfull. Requires user
+				// action or wait for next cron job.
+				return
 			}
 
 			if user.NewestFetchedTime.IsZero() || record.WatchedAt.After(user.NewestFetchedTime) {
 				user.NewestFetchedTime = record.WatchedAt
 				user.NewestFetchedID = record.ID
-				err = users.save(user)
-				if err != nil {
-					log.Println("could not save user while importing", err)
-					break
-				}
 			}
 
 			if user.OldestFetchedTime.IsZero() || record.WatchedAt.Before(user.OldestFetchedTime) {
 				user.OldestFetchedTime = record.WatchedAt
 				user.OldestFetchedID = record.ID
-				err = users.save(user)
-				if err != nil {
-					log.Println("could not save user while importing", err)
-					break
-				}
+			}
+
+			err = users.save(user)
+			if err != nil {
+				log.Fatalf("%s - could not save user: %v\n", user.Domain, err)
+				break
 			}
 		}
 

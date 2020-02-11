@@ -1,3 +1,5 @@
+//go:generate go install github.com/GeertJohan/go.rice/rice
+//go:generate rice embed-go
 package main
 
 import (
@@ -10,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	rice "github.com/GeertJohan/go.rice"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	_ "github.com/joho/godotenv/autoload"
@@ -85,15 +88,16 @@ func main() {
 
 	// TODO: renew token when needed
 	// TODO: lock user savings
-	// TODO: embed layouts
 
 	renderer = render.New(render.Options{
-		Layout: "layout",
+		Layout:     "layout",
+		Directory:  ".",
+		FileSystem: assetsFS{rice.MustFindBox("templates")},
 	})
 
 	r := mux.NewRouter()
 
-	fs := http.FileServer(http.Dir("static"))
+	fs := http.FileServer(rice.MustFindBox("static").HTTPBox())
 	r.PathPrefix("/static").Handler(http.StripPrefix("/static/", fs))
 
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
