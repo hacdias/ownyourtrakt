@@ -38,7 +38,7 @@ header {
 }
 
 footer {
-  margin-top: 5rem;
+  margin-top: 2rem;
   padding: 1rem 0;
 }
 
@@ -141,6 +141,11 @@ input {
   color: #333;
 }
 
+.buttons > * {
+  display: inline-block;
+  margin-right: 1rem;
+}
+
 input[type="submit"],
 button {
   background-color: #2392ff;
@@ -151,4 +156,10 @@ button {
   text-transform: uppercase;
   cursor: pointer;
   border-radius: 0;
+}
+
+input[type="submit"].red,
+button.red {
+  background-color: red;
+  border-color: red;
 }

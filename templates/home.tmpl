@@ -1,8 +1,4 @@
 {{- if .User -}}
-  {{- if .Importing -}}
-    <p><strong>Your Trakt records are currently being imported.</strong></p>
-  {{- end -}}
-
   <h1>Your data</h1>
 
   <table>
@@ -37,18 +33,54 @@
         {{- end -}}
       </td>
     </tr>
-    <tr>
-      <td>Latest Fetched Entry</td>
-      <td>
-        <p>Time: {{ .User.LastFetchedTime }}</p>
-        <p>ID: {{ .User.LastFetchedID }}</p>
-      </td>
-    </tr>
   </table>
 
-  <a href="/trakt/import/reset">
-    <button>Reset Imports Counts</button>
-  </a>
+  <h1>Imports</h1>
+
+  <p>
+    By default, we only start importing from the moment you created your account.
+    However, you can force fetching older entries by using the action buttons bellow.
+    The button will trigger, at most, 100 new posts.
+  </p>
+
+  <p>
+    Every hour, we check if there are updates for every user. If so, we send the new posts.
+    If there are any failures, we save the failed IDs so you can retry later.
+  </p>
+
+  <ul>
+    <li><strong>Newest imported entry:</strong> {{ .User.NewestFetchedTime }}, id: {{ .User.NewestFetchedID }}</li>
+    <li><strong>Oldest imported entry:</strong> {{ .User.OldestFetchedTime }}, id: {{ .User.OldestFetchedID }}</li>
+    {{- with .User.FailedIDs -}}
+      <li><strong>Failed:</strong>
+        <ul>
+          {{- range . -}}
+            <li>{{ . }} <a href="/trakt/import/retry?id={{ . }}">(retry)</a></li>
+          {{- end -}}
+        </ul>
+      </li>
+    {{- end -}}
+  </ul>
+
+  {{- if .Importing -}}
+    <p><strong>Your Trakt records are currently being imported.</strong></p>
+  {{- else -}}
+    <p class="buttons">
+      <a href="/trakt/import/newer">
+        <button>Import Newer</button>
+      </a>
+
+      <a href="/trakt/import/older">
+        <button>Import Older</button>
+      </a>
+    </p>
+
+    <p class="buttons">
+      <a href="/trakt/import/reset">
+        <button class="red">Reset Imports</button>
+      </a>
+    </p>
+  {{- end -}}
 {{- else -}}
   <h1>Login</h1>
   <form action="/auth/start" method="GET">

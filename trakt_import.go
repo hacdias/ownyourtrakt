@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func importRequest(user *user, page int, startAt time.Time) (traktHistory, bool, error) {
+func importRequest(user *user, page int, startAt time.Time, endAt time.Time) (traktHistory, bool, error) {
 	limit := 100
 	u, err := url.Parse("https://api.trakt.tv/sync/history")
 	if err != nil {
@@ -25,6 +25,10 @@ func importRequest(user *user, page int, startAt time.Time) (traktHistory, bool,
 
 	if !startAt.IsZero() {
 		q.Set("start_at", startAt.Format(time.RFC3339Nano))
+	}
+
+	if !endAt.IsZero() {
+		q.Set("end_at", endAt.Format(time.RFC3339Nano))
 	}
 
 	u.RawQuery = q.Encode()
@@ -159,25 +163,50 @@ func sendMicropub(user *user, item traktHistoryItem) error {
 	)
 }
 
-func traktImport(user *user) {
+func traktImport(user *user, older bool, fetchNext bool) {
 	page := 1
 
 	for {
-		history, hasNext, err := importRequest(user, page, user.LastFetchedTime)
+		var err error
+		var history traktHistory
+		var hasNext bool
+
+		if older {
+			// Fetch older items
+			history, hasNext, err = importRequest(user, page, time.Time{}, user.OldestFetchedTime)
+		} else {
+			// Fetch newer items
+			history, hasNext, err = importRequest(user, page, user.NewestFetchedTime, time.Time{})
+		}
+
 		if err != nil {
 			log.Println(err)
 			return
 		}
 
-		for i, record := range history {
-			if record.WatchedAt.Equal(user.LastFetchedTime) && record.ID == user.LastFetchedID {
+		for _, record := range history {
+			if record.WatchedAt.Equal(user.NewestFetchedTime) && record.ID == user.NewestFetchedID {
 				continue
 			}
 
-			if i == 0 && page == 1 {
-				user.LastFetchedTime = record.WatchedAt
-				user.LastFetchedID = record.ID
+			if record.WatchedAt.Equal(user.OldestFetchedTime) && record.ID == user.OldestFetchedID {
+				continue
+			}
 
+			err = sendMicropub(user, record)
+			if err != nil {
+				log.Println("could not send micropub", err)
+
+				user.FailedIDs = append(user.FailedIDs, record.ID)
+				err = users.save(user)
+				if err != nil {
+					log.Println("could not save user while importing", err)
+				}
+			}
+
+			if user.NewestFetchedTime.IsZero() || record.WatchedAt.After(user.NewestFetchedTime) {
+				user.NewestFetchedTime = record.WatchedAt
+				user.NewestFetchedID = record.ID
 				err = users.save(user)
 				if err != nil {
 					log.Println("could not save user while importing", err)
@@ -185,14 +214,18 @@ func traktImport(user *user) {
 				}
 			}
 
-			err = sendMicropub(user, record)
-			if err != nil {
-				log.Println("could not send micropub", err)
-				break
+			if user.OldestFetchedTime.IsZero() || record.WatchedAt.Before(user.OldestFetchedTime) {
+				user.OldestFetchedTime = record.WatchedAt
+				user.OldestFetchedID = record.ID
+				err = users.save(user)
+				if err != nil {
+					log.Println("could not save user while importing", err)
+					break
+				}
 			}
 		}
 
-		if hasNext {
+		if hasNext && fetchNext {
 			page = page + 1
 		} else {
 			break
@@ -204,15 +237,15 @@ func traktImport(user *user) {
 	processes.Unlock()
 }
 
-func traktImportHandler(w http.ResponseWriter, r *http.Request) {
-	user, _ := mustUser(w, r)
+func isTraktOk(w http.ResponseWriter, r *http.Request) (user *user, ok bool) {
+	user, _ = mustUser(w, r)
 	if user == nil {
-		return
+		return nil, false
 	}
 
 	if user.TraktOauth.AccessToken == "" {
 		http.Redirect(w, r, "/trakt/start", http.StatusTemporaryRedirect)
-		return
+		return nil, false
 	}
 
 	processes.Lock()
@@ -222,14 +255,32 @@ func traktImportHandler(w http.ResponseWriter, r *http.Request) {
 		// Already being imported... just redirect!
 		processes.Unlock()
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-		return
+		return nil, false
 	}
 
 	processes.DomainRunning[user.Domain] = true
 	processes.Unlock()
 
-	go traktImport(user)
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+	return user, true
+}
+
+func traktNewerHandler(w http.ResponseWriter, r *http.Request) {
+	user, ok := isTraktOk(w, r)
+	if !ok {
+		return
+	}
+
+	go traktImport(user, false, false)
+}
+
+func traktOlderHandler(w http.ResponseWriter, r *http.Request) {
+	user, ok := isTraktOk(w, r)
+	if !ok {
+		return
+	}
+
+	go traktImport(user, true, false)
 }
 
 func traktResetHandler(w http.ResponseWriter, r *http.Request) {
@@ -238,8 +289,11 @@ func traktResetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user.LastFetchedTime = time.Time{}
-	user.LastFetchedID = 0
+	user.OldestFetchedTime = time.Now()
+	user.OldestFetchedID = 0
+	user.NewestFetchedTime = user.OldestFetchedTime
+	user.NewestFetchedID = 0
+	user.FailedIDs = []int64{}
 
 	err := users.save(user)
 	if err != nil {

@@ -1,3 +1,6 @@
+// TODO: make this simple CLI with a few commands
+// ownyourtrakt login - handles the trakt authentication and outputs required tokens in .env format
+// ownyourtrakt sync - syncs... once per day...
 package main
 
 import (
@@ -120,7 +123,8 @@ func main() {
 	r.HandleFunc("/trakt/start", traktStartHandler)
 	r.HandleFunc("/trakt/callback", traktCallbackHandler)
 	r.HandleFunc("/trakt/import/reset", traktResetHandler)
-	r.HandleFunc("/trakt/import", traktImportHandler)
+	r.HandleFunc("/trakt/import/newer", traktNewerHandler)
+	r.HandleFunc("/trakt/import/older", traktOlderHandler)
 
 	http.Handle("/", r)
 
