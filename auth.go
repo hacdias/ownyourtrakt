@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 
 	"golang.org/x/net/html"
 )
@@ -83,9 +84,12 @@ func authStartHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		log.Printf("user %s is new or error fetching from the DB: %s\n", me, err)
 		u = &user{
-			Domain:    me,
-			Endpoints: *endpoints,
+			Domain:            me,
+			Endpoints:         *endpoints,
+			OldestFetchedTime: time.Now(),
 		}
+
+		u.NewestFetchedTime = u.OldestFetchedTime
 	}
 
 	err = users.save(u)
