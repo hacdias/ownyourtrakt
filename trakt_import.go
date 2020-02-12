@@ -285,6 +285,12 @@ func traktResetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sure := r.URL.Query().Get("sure")
+	if sure != "yes" {
+		renderer.HTML(w, http.StatusOK, "reset", map[string]interface{}{"User": user})
+		return
+	}
+
 	user.OldestFetchedTime = time.Now()
 	user.OldestFetchedID = 0
 	user.NewestFetchedTime = user.OldestFetchedTime
