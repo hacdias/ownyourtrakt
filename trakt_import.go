@@ -187,11 +187,8 @@ func traktImport(user *user, older bool, fetchNext bool) {
 		failed := false
 
 		for _, record := range history {
-			if record.WatchedAt.Equal(user.NewestFetchedTime) && record.ID == user.NewestFetchedID {
-				continue
-			}
-
-			if record.WatchedAt.Equal(user.OldestFetchedTime) && record.ID == user.OldestFetchedID {
+			if record.ID == user.NewestFetchedID || record.ID == user.OldestFetchedID {
+				// Do not copy already copied ID.
 				continue
 			}
 
