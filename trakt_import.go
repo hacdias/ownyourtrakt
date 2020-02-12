@@ -171,6 +171,9 @@ func traktImport(user *user, older bool, fetchNext bool) {
 		var history traktHistory
 		var hasNext bool
 
+		newestFetchedID := user.NewestFetchedID
+		oldestFetchedID := user.OldestFetchedID
+
 		if older {
 			// Fetch older items
 			history, hasNext, err = importRequest(user, page, time.Time{}, user.OldestFetchedTime)
@@ -187,7 +190,7 @@ func traktImport(user *user, older bool, fetchNext bool) {
 		failed := false
 
 		for _, record := range history {
-			if record.ID == user.NewestFetchedID || record.ID == user.OldestFetchedID {
+			if record.ID == newestFetchedID || record.ID == oldestFetchedID {
 				// Do not copy already copied ID.
 				continue
 			}
