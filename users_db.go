@@ -38,6 +38,32 @@ func (d *usersDB) get(domain string) (*user, error) {
 	return u, err
 }
 
+func (d *usersDB) getAll() ([]*user, error) {
+	users := []*user{}
+
+	err := d.db.Update(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucketIfNotExists([]byte("users"))
+		if err != nil {
+			return err
+		}
+
+		c := b.Cursor()
+
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			u := &user{}
+			err = json.Unmarshal(v, u)
+			if err != nil {
+				return err
+			}
+			users = append(users, u)
+		}
+
+		return nil
+	})
+
+	return users, err
+}
+
 func (d *usersDB) save(u *user) error {
 	return d.db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists([]byte("users"))
