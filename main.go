@@ -3,12 +3,13 @@
 package main
 
 import (
+	"context"
 	"encoding/gob"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"sync"
 	"time"
 
@@ -81,6 +82,9 @@ func main() {
 	}
 	defer users.close()
 
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt)
+
 	// TODO: renew token when needed
 	// TODO: lock user savings
 
@@ -127,11 +131,36 @@ func main() {
 
 	srv := &http.Server{
 		Handler:      r,
-		Addr:         "localhost:" + port,
+		Addr:         "127.0.0.1:" + port,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
 
-	fmt.Println("Listening on http://" + srv.Addr)
-	log.Fatal(srv.ListenAndServe())
+	// Run server in paralell.
+	go func() {
+		log.Printf("Listening on http://%s\n", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal(err)
+		}
+	}()
+
+	// Run scheduled imports in parallel and cancel before returning,
+	// i.e., after getting the signal.
+	impCtx, impCancel := context.WithCancel(context.Background())
+	defer impCancel()
+	go scheduleImports(impCtx)
+
+	<-stop
+
+	log.Printf("Shutting down the server...\n")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	err = srv.Shutdown(ctx)
+	if err != nil {
+		log.Printf("error while shutting down server: %v\n", err)
+	}
+
+	log.Printf("Server gracefully stopped\n")
 }
