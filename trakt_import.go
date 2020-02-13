@@ -311,3 +311,35 @@ func traktResetHandler(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 }
+
+func importEveryone() {
+	log.Println("Running cron import")
+	users, err := users.getAll()
+	if err != nil {
+		log.Printf("error while getting users: %v\n", err)
+	}
+
+	for _, user := range users {
+		if user.TraktOauth.AccessToken == "" || user.AccessToken == "" {
+			continue
+		}
+
+		traktImport(user, false, false)
+	}
+}
+
+func scheduleImports(ctx context.Context) {
+	importEveryone()
+
+	t := time.NewTicker(time.Minute * 30)
+	defer t.Stop()
+
+	for {
+		select {
+		case <-t.C:
+			importEveryone()
+		case <-ctx.Done():
+			return
+		}
+	}
+}
