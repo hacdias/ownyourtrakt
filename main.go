@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	rice "github.com/GeertJohan/go.rice"
@@ -82,8 +83,8 @@ func main() {
 	}
 	defer users.close()
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt)
+	stop := make(chan os.Signal, 2)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	// TODO: renew token when needed
 	// TODO: lock user savings
