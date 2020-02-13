@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log"
@@ -232,7 +233,15 @@ func link(doc *html.Node, which string) (string, error) {
 }
 
 func discoverEndpoints(domain string) (*endpoints, error) {
-	resp, err := http.Get(domain)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", domain, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +299,11 @@ func getToken(me, code, redirectURI, clientID, codeVerifier, endpoint string) (*
 	q.Set("code_verifier", codeVerifier)
 
 	u.RawQuery = q.Encode()
-	req, err := http.NewRequest("POST", u.String(), nil)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "POST", u.String(), nil)
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -33,7 +34,10 @@ func importRequest(user *user, page int, startAt time.Time, endAt time.Time) (tr
 
 	u.RawQuery = q.Encode()
 
-	req, err := http.NewRequest("GET", u.String(), nil)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
 	if err != nil {
 		return nil, false, err
 	}
@@ -136,7 +140,10 @@ func sendMicropub(user *user, item traktHistoryItem) error {
 		return err
 	}
 
-	req, err := http.NewRequest("POST", user.Endpoints.Micropub, bytes.NewBuffer(data))
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "POST", user.Endpoints.Micropub, bytes.NewBuffer(data))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+user.AccessToken)
 

@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 type oauthRequest struct {
@@ -32,7 +34,10 @@ func authorize(endpoint string, oauthReq *oauthRequest) (*oauthResponse, error) 
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(js))
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewBuffer(js))
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
