@@ -1,7 +1,7 @@
 # Own Your Trakt
 
-Still in the ♨️ oven. Currently, I don't have a hosted version for general use. If you're interested,
-you can host it yourself:
+Please use this at your **own risk**. Currently, I don't have a hosted version for general use.
+If you're interested, you can host it yourself:
 
 1. Create an application on https://trakt.tv/oauth/applications/new
 2. Copy `.env.example` to `.env`
@@ -13,6 +13,10 @@ randomly generated, string.
 
 I decided to keep the most information possible so your micropub endpoint can make whatever transformations
 you want and you still have access to the IDs that can be used to fetch more info from the Trakt or other APIs.
+
+## Shortcomings
+
+1. It doesn't fetch watches that you add in the past.
 
 ## Example of episode request
 
