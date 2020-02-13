@@ -326,6 +326,7 @@ func importEveryone() {
 
 		traktImport(user, false, false)
 	}
+	log.Println("Finished running cron import")
 }
 
 func scheduleImports(ctx context.Context) {
