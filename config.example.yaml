@@ -1,0 +1,11 @@
+baseUrl: https://some.website.com
+port: 8050
+database: ./database.db
+sessionKey: HighlyProtectedKey
+
+# Disable signups by external people.
+disableSignups: true
+
+# The Trakt (https://trakt.tv/oauth/applications) client ID and secret for OAuth2.
+traktClientID: clientID
+traktClientSecret: clientSecret

@@ -14,7 +14,6 @@
         <ul>
           <li><a href="/">OwnYourTrakt</a></li>
           {{ if .User }}
-            <li><a href="/trakt/start">{{ if .User.TraktToken }}Reconnect{{ else }}Connect{{ end }} Trakt</a></li>
             <li id="profile"><span>{{ .User.ProfileURL }}</span></li>
             <li><a href="/logout">Logout</a></li>
           {{ end }}

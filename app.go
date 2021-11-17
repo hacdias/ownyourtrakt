@@ -102,7 +102,7 @@ func (a *app) resetTrakt(user *user) error {
 }
 
 func (a *app) importRequest(user *user, page int, startAt time.Time, endAt time.Time) (traktHistory, bool, error) {
-	limit := 1000
+	limit := 100
 	u, err := url.Parse("https://api.trakt.tv/sync/history")
 	if err != nil {
 		return nil, false, err

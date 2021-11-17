@@ -11,6 +11,7 @@ type config struct {
 	Port              int
 	SessionKey        string
 	Database          string
+	DisableSignups    bool
 	TraktClientID     string
 	TraktClientSecret string
 }

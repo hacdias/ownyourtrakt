@@ -150,6 +150,9 @@ func (s *server) loginGet(w http.ResponseWriter, r *http.Request) {
 		log.Printf("user %s already existed\n", me)
 		u.ProfileURL = me
 		u.Endpoints = *endpoints
+	} else if s.DisableSignups {
+		s.error(w, r, nil, http.StatusForbidden, errors.New("new users are disabled"))
+		return
 	} else {
 		log.Printf("user %s is new or error fetching from the DB: %s\n", me, err)
 		u = &user{

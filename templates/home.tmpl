@@ -28,10 +28,10 @@
       <td>Trakt Connection</td>
       <td>
         {{ with .User.TraktToken }}
-          <p>You seem to be successfully connected to Trakt.</p>
+          <p>Experiencing issues? <a href="/trakt/start">Reconnect Trakt</a>.</p>
           <pre>{{ .AccessToken }}</pre>
         {{- else -}}
-          <p>You're not connected to Trakt.</p>
+          <p>You're not connected to Trakt. <a href="/trakt/start">Connect Trakt</a>.</p>
         {{- end -}}
       </td>
     </tr>
@@ -75,9 +75,11 @@
     </p>
   {{- end -}}
 {{- else -}}
-  <h1>Login</h1>
-  <form action="/login" method="GET">
-    <input name="me" type="url" placeholder="https://your.name.com">
-    <input type="submit" value="Login">
-  </form>
+  <div id="login">
+    <h1>Login</h1>
+    <form action="/login" method="GET">
+      <input name="me" type="url" placeholder="https://your.name.com"><br>
+      <input type="submit" value="Login">
+    </form>
+  </div>
 {{- end -}}
