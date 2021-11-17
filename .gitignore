@@ -1,4 +1,3 @@
 *.db
-.env
-ownyourtrakt
-rice-box.go
+config.yaml
+_OLD

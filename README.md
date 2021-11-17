@@ -29,6 +29,9 @@ you want and you still have access to the IDs that can be used to fetch more inf
     "published": [
       "2020-02-11T15:40:46Z"
     ],
+    "summary": [
+      "Just watched: Young Sheldon (S3E14)"
+    ],
     "watch-of": [
       {
         "properties": {
@@ -98,6 +101,9 @@ you want and you still have access to the IDs that can be used to fetch more inf
   "properties": {
     "published": [
       "2020-01-17T22:31:25Z"
+    ],
+    "summary": [
+      "Just watched: Maleficent: Mistress of Evil"
     ],
     "watch-of": [
       {

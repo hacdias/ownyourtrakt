@@ -1,31 +1,18 @@
 package main
 
 import (
-	"path/filepath"
 	"time"
 
-	rice "github.com/GeertJohan/go.rice"
+	"golang.org/x/oauth2"
 )
 
 type user struct {
-	Domain            string
+	ProfileURL        string
 	Endpoints         endpoints
-	AccessToken       string
-	TraktOauth        oauthResponse
+	IndieToken        *oauth2.Token
+	TraktToken        *oauth2.Token
 	NewestFetchedTime time.Time
 	NewestFetchedID   int64
 	OldestFetchedTime time.Time
 	OldestFetchedID   int64
-}
-
-type assetsFS struct {
-	box *rice.Box
-}
-
-func (a assetsFS) Walk(root string, walkFn filepath.WalkFunc) error {
-	return a.box.Walk(root, walkFn)
-}
-
-func (a assetsFS) ReadFile(filename string) ([]byte, error) {
-	return a.box.Bytes(filename)
 }

@@ -1,0 +1,446 @@
+package main
+
+import (
+	"context"
+	"embed"
+	"errors"
+	"log"
+	"net"
+	"net/http"
+	"net/url"
+	"strconv"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/gorilla/sessions"
+	"github.com/unrolled/render"
+	"golang.org/x/oauth2"
+)
+
+const sessionKey = "ownyourtrakt"
+
+//go:embed static/*
+var static embed.FS
+
+//go:embed templates/*
+var templates embed.FS
+
+type server struct {
+	*app
+	srv      *http.Server
+	store    *sessions.CookieStore
+	renderer *render.Render
+}
+
+func newServer(app *app) (*server, error) {
+	s := &server{
+		store: sessions.NewCookieStore([]byte(app.SessionKey)),
+		app:   app,
+		renderer: render.New(render.Options{
+			Layout:     "layout",
+			Directory:  "templates",
+			FileSystem: render.FS(templates),
+		}),
+	}
+
+	return s, nil
+}
+
+func (s *server) start() error {
+	r := chi.NewMux()
+
+	r.Handle("/static*", http.FileServer(http.FS(static)))
+
+	r.Get("/", s.rootGet)
+	r.Get("/login", s.loginGet)
+	r.Get("/logout", s.logoutGet)
+	r.Get("/callback", s.callbackGet)
+
+	r.Get("/trakt/start", s.traktStartGet)
+	r.Get("/trakt/callback", s.traktCallbackGet)
+
+	r.Get("/trakt/reset", s.traktResetGet)
+	r.Post("/trakt/reset", s.traktResetPost)
+
+	r.Get("/trakt/newer", s.traktNewerGet)
+	r.Get("/trakt/older", s.traktOlderGet)
+
+	addr := ":" + strconv.Itoa(s.Port)
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	s.srv = &http.Server{
+		Handler:      r,
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+	}
+
+	log.Printf("listening on %s", ln.Addr().String())
+	log.Printf("public address is %s", s.BaseURL)
+	return s.srv.Serve(ln)
+}
+
+type rootData struct {
+	Importing bool
+	User      *user
+}
+
+func (s *server) rootGet(w http.ResponseWriter, r *http.Request) {
+	user, _, ok := s.getUser(w, r)
+	if !ok {
+		return
+	}
+
+	importing := false
+
+	if user != nil {
+		s.importMu.Lock()
+		importing = s.importing[user.ProfileURL]
+		s.importMu.Unlock()
+	}
+
+	s.renderer.HTML(w, http.StatusOK, "home", &rootData{
+		User:      user,
+		Importing: importing,
+	})
+}
+
+func (s *server) loginGet(w http.ResponseWriter, r *http.Request) {
+	me := r.URL.Query().Get("me")
+	url, err := url.Parse(me)
+	if err != nil || url.Host == "" {
+		s.error(w, r, nil, http.StatusBadRequest, errors.New("invalid url provided"))
+		return
+	}
+
+	url.Path = "/"
+	me = url.String()
+
+	endpoints, err := discoverEndpoints(me)
+	if err != nil {
+		s.error(w, r, nil, http.StatusBadRequest, err)
+		return
+	}
+
+	state := randString(10)
+
+	_, session, ok := s.getUser(w, r)
+	if !ok {
+		return
+	}
+
+	session.Values["auth_state"] = state
+	session.Values["auth_me"] = me
+	scope := "create update"
+
+	oo := s.makeIndieAuthConfig(endpoints)
+
+	authURL := oo.AuthCodeURL(state, oauth2.SetAuthURLParam("scope", scope))
+
+	err = session.Save(r, w)
+	if err != nil {
+		s.error(w, r, nil, http.StatusInternalServerError, err)
+		return
+	}
+
+	u, err := s.db.get(me)
+	if err == nil {
+		log.Printf("user %s already existed\n", me)
+		u.ProfileURL = me
+		u.Endpoints = *endpoints
+	} else {
+		log.Printf("user %s is new or error fetching from the DB: %s\n", me, err)
+		u = &user{
+			ProfileURL:        me,
+			Endpoints:         *endpoints,
+			OldestFetchedTime: time.Now(),
+		}
+		u.NewestFetchedTime = u.OldestFetchedTime
+	}
+
+	err = s.db.save(u)
+	if err != nil {
+		s.error(w, r, nil, http.StatusInternalServerError, err)
+		return
+	}
+
+	http.Redirect(w, r, authURL, http.StatusSeeOther)
+}
+
+func (s *server) callbackGet(w http.ResponseWriter, r *http.Request) {
+	_, session, ok := s.getUser(w, r)
+	if !ok {
+		return
+	}
+
+	originalState, ok := session.Values["auth_state"].(string)
+	if !ok || originalState == "" {
+		// log in session was not started, go home
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
+	me, ok := session.Values["auth_me"].(string)
+	if !ok {
+		// log in session was not started, go home
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
+	code := r.URL.Query().Get("code")
+	if code == "" {
+		s.error(w, r, nil, http.StatusBadRequest, errors.New("code was empty"))
+		return
+	}
+
+	state := r.URL.Query().Get("state")
+	if state == "" {
+		s.error(w, r, nil, http.StatusBadRequest, errors.New("state was empty"))
+		return
+	}
+
+	if state != originalState {
+		s.error(w, r, nil, http.StatusBadRequest, errors.New("state was invalid"))
+		return
+	}
+
+	user, err := s.db.get(me)
+	if err != nil {
+		s.error(w, r, nil, http.StatusInternalServerError, err)
+		return
+	}
+
+	oo := s.makeIndieAuthConfig(&user.Endpoints)
+
+	tok, err := oo.Exchange(context.Background(), code)
+	if err != nil {
+		s.error(w, r, nil, http.StatusInternalServerError, err)
+		return
+	}
+
+	user.IndieToken = tok
+	session.Values["me"] = user.ProfileURL
+
+	err = s.db.save(user)
+	if err != nil {
+		s.error(w, r, user, http.StatusInternalServerError, err)
+		return
+	}
+
+	delete(session.Values, "auth_state")
+	delete(session.Values, "auth_me")
+
+	err = session.Save(r, w)
+	if err != nil {
+		s.error(w, r, user, http.StatusInternalServerError, err)
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (s *server) logoutGet(w http.ResponseWriter, r *http.Request) {
+	session, err := s.store.Get(r, sessionKey)
+	if err != nil {
+		s.error(w, r, nil, http.StatusInternalServerError, err)
+		return
+	}
+
+	session.Values = map[interface{}]interface{}{}
+	err = session.Save(r, w)
+	if err != nil {
+		s.error(w, r, nil, http.StatusInternalServerError, err)
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (s *server) traktStartGet(w http.ResponseWriter, r *http.Request) {
+	user, session := s.mustUser(w, r)
+	if user == nil {
+		return
+	}
+
+	state := randString(10)
+	url := s.getTraktAuthURL(state)
+	session.Values["trakt_state"] = state
+
+	err := session.Save(r, w)
+	if err != nil {
+		s.error(w, r, user, http.StatusInternalServerError, err)
+		return
+	}
+
+	http.Redirect(w, r, url, http.StatusSeeOther)
+}
+
+func (s *server) traktCallbackGet(w http.ResponseWriter, r *http.Request) {
+	user, session := s.mustUser(w, r)
+	if user == nil {
+		return
+	}
+
+	originalState, ok := session.Values["trakt_state"].(string)
+	if !ok {
+		// redirect to login because trakt session was not started
+		http.Redirect(w, r, "/trakt/start", http.StatusSeeOther)
+		return
+	}
+
+	state := r.URL.Query().Get("state")
+	if state != originalState {
+		s.error(w, r, user, http.StatusBadRequest, errors.New("state was invalid"))
+		return
+	}
+
+	code := r.URL.Query().Get("code")
+	if code == "" {
+		s.error(w, r, user, http.StatusBadRequest, errors.New("code was empty"))
+		return
+	}
+
+	tok, err := s.getTraktToken(code)
+	if err != nil {
+		s.error(w, r, user, http.StatusUnauthorized, err)
+		return
+	}
+
+	user.TraktToken = tok
+
+	err = s.db.save(user)
+	if err != nil {
+		s.error(w, r, user, http.StatusInternalServerError, err)
+		return
+	}
+
+	delete(session.Values, "trakt_state")
+
+	err = session.Save(r, w)
+	if err != nil {
+		s.error(w, r, user, http.StatusInternalServerError, err)
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (s *server) traktResetGet(w http.ResponseWriter, r *http.Request) {
+	user, _ := s.mustUser(w, r)
+	if user == nil {
+		return
+	}
+
+	s.renderer.HTML(w, http.StatusOK, "reset", &rootData{User: user})
+}
+
+func (s *server) traktResetPost(w http.ResponseWriter, r *http.Request) {
+	user, _ := s.mustUser(w, r)
+	if user == nil {
+		return
+	}
+
+	err := s.resetTrakt(user)
+	if err != nil {
+		s.error(w, r, user, http.StatusInternalServerError, err)
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (s *server) error(w http.ResponseWriter, r *http.Request, user *user, code int, err error) {
+	if user == nil {
+		log.Println(err)
+	} else {
+		log.Println(user.ProfileURL, err)
+	}
+
+	s.renderer.HTML(w, code, "error", map[string]interface{}{
+		"User":  user,
+		"Error": err.Error(),
+	})
+}
+
+func (s *server) close() error {
+	return s.srv.Close()
+}
+
+func (s *server) getUser(w http.ResponseWriter, r *http.Request) (*user, *sessions.Session, bool) {
+	session, err := s.store.Get(r, sessionKey)
+	if err != nil {
+		s.error(w, r, nil, http.StatusInternalServerError, err)
+		return nil, nil, false
+	}
+
+	me, ok := session.Values["me"].(string)
+	if !ok {
+		return nil, session, true
+	}
+
+	u, err := s.db.get(me)
+	if err != nil {
+		return nil, session, true
+	}
+
+	return u, session, true
+}
+
+func (s *server) mustUser(w http.ResponseWriter, r *http.Request) (*user, *sessions.Session) {
+	user, session, ok := s.getUser(w, r)
+	if !ok {
+		return nil, nil
+	}
+
+	if user == nil {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return nil, nil
+	}
+
+	return user, session
+}
+
+func (s *server) checkTrakt(w http.ResponseWriter, r *http.Request) (user *user, ok bool) {
+	user, _ = s.mustUser(w, r)
+	if user == nil {
+		return nil, false
+	}
+
+	if user.TraktToken == nil {
+		http.Redirect(w, r, "/trakt/start", http.StatusSeeOther)
+		return nil, false
+	}
+
+	s.importMu.Lock()
+	defer s.importMu.Unlock()
+	running := s.importing[user.ProfileURL]
+
+	if running {
+		// Already being imported... just redirect!
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return nil, false
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+	return user, true
+}
+
+func (s *server) traktNewerGet(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.checkTrakt(w, r)
+	if !ok {
+		return
+	}
+
+	go s.importTrakt(user, false, false)
+}
+
+func (s *server) traktOlderGet(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.checkTrakt(w, r)
+	if !ok {
+		return
+	}
+
+	go s.importTrakt(user, true, false)
+}

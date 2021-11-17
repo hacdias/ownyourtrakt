@@ -14,9 +14,9 @@
         <ul>
           <li><a href="/">OwnYourTrakt</a></li>
           {{ if .User }}
-            <li><a href="/trakt/start">{{ if .User.TraktOauth.AccessToken }}Reconnect{{ else }}Connect{{ end }} Trakt</a></li>
-            <li id="domain"><span>{{ .User.Domain }}</span></li>
-            <li><a href="/auth/logout">Logout</a></li>
+            <li><a href="/trakt/start">{{ if .User.TraktToken }}Reconnect{{ else }}Connect{{ end }} Trakt</a></li>
+            <li id="profile"><span>{{ .User.ProfileURL }}</span></li>
+            <li><a href="/logout">Logout</a></li>
           {{ end }}
         </ul>
       </div>

@@ -6,22 +6,22 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
-type usersDB struct {
+type database struct {
 	db *bolt.DB
 }
 
-func newUsersDB(path string) (*usersDB, error) {
+func newDatabase(path string) (*database, error) {
 	db, err := bolt.Open(path, 0666, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return &usersDB{
+	return &database{
 		db: db,
 	}, nil
 }
 
-func (d *usersDB) get(domain string) (*user, error) {
+func (d *database) get(profileURL string) (*user, error) {
 	u := &user{}
 
 	err := d.db.Update(func(tx *bolt.Tx) error {
@@ -30,7 +30,7 @@ func (d *usersDB) get(domain string) (*user, error) {
 			return err
 		}
 
-		v := b.Get([]byte(domain))
+		v := b.Get([]byte(profileURL))
 
 		return json.Unmarshal(v, u)
 	})
@@ -38,7 +38,7 @@ func (d *usersDB) get(domain string) (*user, error) {
 	return u, err
 }
 
-func (d *usersDB) getAll() ([]*user, error) {
+func (d *database) getAll() ([]*user, error) {
 	users := []*user{}
 
 	err := d.db.Update(func(tx *bolt.Tx) error {
@@ -64,7 +64,7 @@ func (d *usersDB) getAll() ([]*user, error) {
 	return users, err
 }
 
-func (d *usersDB) save(u *user) error {
+func (d *database) save(u *user) error {
 	return d.db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists([]byte("users"))
 		if err != nil {
@@ -76,10 +76,10 @@ func (d *usersDB) save(u *user) error {
 			return err
 		}
 
-		return b.Put([]byte(u.Domain), encoded)
+		return b.Put([]byte(u.ProfileURL), encoded)
 	})
 }
 
-func (d *usersDB) close() error {
+func (d *database) close() error {
 	return d.db.Close()
 }

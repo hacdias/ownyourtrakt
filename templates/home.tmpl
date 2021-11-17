@@ -4,7 +4,7 @@
   <table>
     <tr>
       <td>Me</td>
-      <td><pre>{{ .User.Domain }}</pre></td>
+      <td><pre>{{ .User.ProfileURL }}</pre></td>
     </tr>
     <tr>
       <td>Micropub Endpoint</td>
@@ -18,16 +18,18 @@
       <td>Tokens Endpoint</td>
       <td><pre>{{ .User.Endpoints.Tokens }}</pre></td>
     </tr>
+    {{ with .User.IndieToken }}
     <tr>
       <td>Access Token</td>
-      <td><pre>{{ .User.AccessToken }}</pre></td>
+      <td><pre>{{ .AccessToken }}</pre></td>
     </tr>
+    {{ end }}
     <tr>
       <td>Trakt Connection</td>
       <td>
-        {{- if .User.TraktOauth.AccessToken -}}
+        {{ with .User.TraktToken }}
           <p>You seem to be successfully connected to Trakt.</p>
-          <pre>{{ .User.TraktOauth.AccessToken }}</pre>
+          <pre>{{ .AccessToken }}</pre>
         {{- else -}}
           <p>You're not connected to Trakt.</p>
         {{- end -}}
@@ -57,24 +59,24 @@
     <p><strong>Your Trakt records are currently being imported.</strong></p>
   {{- else -}}
     <p class="buttons">
-      <a href="/trakt/import/newer">
+      <a href="/trakt/newer">
         <button>Import Newer</button>
       </a>
 
-      <a href="/trakt/import/older">
+      <a href="/trakt/older">
         <button>Import Older</button>
       </a>
     </p>
 
     <p class="buttons">
-      <a href="/trakt/import/reset">
+      <a href="/trakt/reset">
         <button class="red">Reset Imports</button>
       </a>
     </p>
   {{- end -}}
 {{- else -}}
   <h1>Login</h1>
-  <form action="/auth/start" method="GET">
+  <form action="/login" method="GET">
     <input name="me" type="url" placeholder="https://your.name.com">
     <input type="submit" value="Login">
   </form>
