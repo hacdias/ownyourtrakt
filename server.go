@@ -27,16 +27,16 @@ var templates embed.FS
 
 type server struct {
 	*app
-	srv      *http.Server
-	store    *sessions.CookieStore
-	renderer *render.Render
+	srv    *http.Server
+	store  *sessions.CookieStore
+	render *render.Render
 }
 
 func newServer(app *app) (*server, error) {
 	s := &server{
 		store: sessions.NewCookieStore([]byte(app.SessionKey)),
 		app:   app,
-		renderer: render.New(render.Options{
+		render: render.New(render.Options{
 			Layout:     "layout",
 			Directory:  "templates",
 			FileSystem: render.FS(templates),
@@ -101,10 +101,13 @@ func (s *server) rootGet(w http.ResponseWriter, r *http.Request) {
 		s.importMu.Unlock()
 	}
 
-	s.renderer.HTML(w, http.StatusOK, "home", &rootData{
+	err := s.render.HTML(w, http.StatusOK, "home", &rootData{
 		User:      user,
 		Importing: importing,
 	})
+	if err != nil {
+		log.Print(err)
+	}
 }
 
 func (s *server) loginGet(w http.ResponseWriter, r *http.Request) {
@@ -336,7 +339,10 @@ func (s *server) traktResetGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.renderer.HTML(w, http.StatusOK, "reset", &rootData{User: user})
+	err := s.render.HTML(w, http.StatusOK, "reset", &rootData{User: user})
+	if err != nil {
+		log.Print(err)
+	}
 }
 
 func (s *server) traktResetPost(w http.ResponseWriter, r *http.Request) {
@@ -361,10 +367,13 @@ func (s *server) error(w http.ResponseWriter, r *http.Request, user *user, code 
 		log.Println(user.ProfileURL, err)
 	}
 
-	s.renderer.HTML(w, code, "error", map[string]interface{}{
+	err = s.render.HTML(w, code, "error", map[string]interface{}{
 		"User":  user,
 		"Error": err.Error(),
 	})
+	if err != nil {
+		log.Print(err)
+	}
 }
 
 func (s *server) close() error {
