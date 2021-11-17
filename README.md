@@ -30,61 +30,61 @@ you want and you still have access to the IDs that can be used to fetch more inf
       "2020-02-11T15:40:46Z"
     ],
     "summary": [
-      "Just watched: Young Sheldon (S3E14)"
+      "Just watched: A Slump, a Cross and Roadside Gravel (Young Sheldon S3E14)"
     ],
     "watch-of": [
       {
+        "type": [
+          "h-cite"
+        ],
         "properties": {
+          "name": [
+            "A Slump, a Cross and Roadside Gravel"
+          ],
+          "url": [
+            "https://trakt.tv/shows/young-sheldon/seasons/3/episodes/14"
+          ],
           "episode": [
             14
           ],
           "season": [
             3
           ],
-          "title": [
-            "A Slump, a Cross and Roadside Gravel"
-          ],
-          "trakt-id": [
+          "trakt-watch-id": [
             5611853642
           ],
-          "url": [
-            "https://trakt.tv/shows/young-sheldon/seasons/3/episodes/14"
-          ],
-          "ids": {
+          "trakt-ids": {
             "trakt": 3935937,
             "imdb": "tt11591958",
             "tmdb": 2072445,
             "tvdb": 7539973
           },
-          "show": [
+          "episode-of": [
             {
+              "type": [
+                "h-cite"
+              ],
               "properties": {
-                "ids": {
-                  "trakt": 119172,
-                  "imdb": "tt6226232",
-                  "tmdb": 71728,
-                  "slug": "young-sheldon",
-                  "tvdb": 328724
-                },
-                "title": [
+                "name": [
                   "Young Sheldon"
                 ],
                 "url": [
                   "https://trakt.tv/shows/young-sheldon"
                 ],
-                "year": [
+                "published": [
                   2017
-                ]
-              },
-              "type": [
-                "h-card"
-              ]
+                ],
+                "trakt-ids": {
+                  "trakt": 119172,
+                  "imdb": "tt6226232",
+                  "tmdb": 71728,
+                  "slug": "young-sheldon",
+                  "tvdb": 328724
+                }
+              }
             }
           ]
-        },
-        "type": [
-          "h-card"
-        ]
+        }
       }
     ]
   }
@@ -108,22 +108,22 @@ you want and you still have access to the IDs that can be used to fetch more inf
     "watch-of": [
       {
         "type": [
-          "h-card"
+          "h-cite"
         ],
         "properties": {
-          "title": [
+          "name": [
             "Maleficent: Mistress of Evil"
-          ],
-          "type": [
-            "movie"
           ],
           "url": [
             "https://trakt.tv/movies/maleficent-mistress-of-evil-2019"
           ],
-          "year": [
+          "published": [
             2019
           ],
-          "ids": {
+          "trakt-watch-id": [
+            5611853642
+          ],
+          "trakt-ids": {
             "trakt": 265465,
             "imdb": "tt4777008",
             "tmdb": 420809,

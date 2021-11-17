@@ -48,21 +48,19 @@ type traktHistory []traktHistoryItem
 
 func traktToMicroformats(item traktHistoryItem) (interface{}, error) {
 	watch := map[string]interface{}{}
-	watch["trakt-id"] = []int64{item.ID}
+	watch["trakt-watch-id"] = []int64{item.ID}
 
 	summary := ""
 
 	if item.Type == "episode" {
-		show := map[string]interface{}{}
+		episodeOf := map[string]interface{}{}
 
-		show["title"] = []string{item.Show.Title}
-		show["year"] = []int{item.Show.Year}
-		show["url"] = []string{"https://trakt.tv/shows/" + item.Show.IDs.Slug}
-		show["ids"] = item.Show.IDs
+		episodeOf["name"] = []string{item.Show.Title}
+		episodeOf["url"] = []string{"https://trakt.tv/shows/" + item.Show.IDs.Slug}
+		episodeOf["published"] = []string{time.Date(item.Show.Year, 1, 1, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)}
+		episodeOf["trakt-ids"] = item.Show.IDs
 
-		watch["title"] = []string{item.Episode.Title}
-		watch["season"] = []int{item.Episode.Season}
-		watch["episode"] = []int{item.Episode.Number}
+		watch["name"] = []string{item.Episode.Title}
 		watch["url"] = []string{
 			"https://trakt.tv/shows/" +
 				item.Show.IDs.Slug +
@@ -71,20 +69,22 @@ func traktToMicroformats(item traktHistoryItem) (interface{}, error) {
 				"/episodes/" +
 				strconv.Itoa(item.Episode.Number),
 		}
-		watch["ids"] = item.Episode.IDs
-		watch["show"] = []interface{}{
+		watch["episode"] = []int{item.Episode.Number}
+		watch["season"] = []int{item.Episode.Season}
+		watch["trakt-ids"] = item.Episode.IDs
+		watch["episode-of"] = []interface{}{
 			map[string]interface{}{
-				"type":       []string{"h-card"},
-				"properties": show,
+				"type":       []string{"h-cite"},
+				"properties": episodeOf,
 			},
 		}
 
-		summary = fmt.Sprintf("Just watched: %s S%dE%d", item.Show.Title, item.Episode.Season, item.Episode.Number)
+		summary = fmt.Sprintf("Just watched: %s (%s S%dE%d)", item.Episode.Title, item.Show.Title, item.Episode.Season, item.Episode.Number)
 	} else if item.Type == "movie" {
-		watch["title"] = []string{item.Movie.Title}
-		watch["year"] = []int{item.Movie.Year}
+		watch["name"] = []string{item.Movie.Title}
 		watch["url"] = []string{"https://trakt.tv/movies/" + item.Movie.IDs.Slug}
-		watch["ids"] = item.Movie.IDs
+		watch["published"] = []string{time.Date(item.Movie.Year, 1, 1, 0, 0, 0, 0, time.UTC).Format(time.RFC3339)}
+		watch["trakt-ids"] = item.Movie.IDs
 
 		summary = "Just watched: " + item.Movie.Title
 	} else {
@@ -98,7 +98,7 @@ func traktToMicroformats(item traktHistoryItem) (interface{}, error) {
 			"summary":   []string{summary},
 			"watch-of": []interface{}{
 				map[string]interface{}{
-					"type":       []string{"h-card"},
+					"type":       []string{"h-cite"},
 					"properties": watch,
 				},
 			},
