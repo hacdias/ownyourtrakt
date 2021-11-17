@@ -4,12 +4,10 @@ Please use this at your **own risk**. Currently, I don't have a hosted version f
 If you're interested, you can host it yourself:
 
 1. Create an application on https://trakt.tv/oauth/applications/new
-2. Copy `.env.example` to `.env`
-3. Fill the required fields. The `SESSION_KEY` is used to encrypt the session cookies. Please use a strong,
-randomly generated, string.
-4. `make`
+2. Copy `config.example.yaml` to `config.yaml`
+3. Fill the required fields.
+4. `go build`
 5. Run the executable!
-6. Go to `BASE_URL` and log in with your user.
 
 I decided to keep the most information possible so your micropub endpoint can make whatever transformations
 you want and you still have access to the IDs that can be used to fetch more info from the Trakt or other APIs.
