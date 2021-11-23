@@ -6,7 +6,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 
@@ -111,14 +110,13 @@ func (s *server) rootGet(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) loginGet(w http.ResponseWriter, r *http.Request) {
 	me := r.URL.Query().Get("me")
-	url, err := url.Parse(me)
-	if err != nil || url.Host == "" {
-		s.error(w, r, nil, http.StatusBadRequest, errors.New("invalid url provided"))
+	me = indieauth.CanonicalizeURL(me)
+
+	err := indieauth.IsValidProfileURL(me)
+	if err != nil {
+		s.error(w, r, nil, http.StatusBadRequest, err)
 		return
 	}
-
-	url.Path = "/"
-	me = url.String()
 
 	authInfo, redirect, err := s.indieauth.Authenticate(me, "create")
 	if err != nil {

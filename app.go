@@ -30,7 +30,7 @@ func newApp(config *config) (*app, error) {
 	a := &app{
 		config:    config,
 		importing: map[string]bool{},
-		indieauth: indieauth.NewClient(config.BaseURL, config.BaseURL+"/callback", nil),
+		indieauth: indieauth.NewClient(config.BaseURL+"/", config.BaseURL+"/callback", nil),
 		oauth2: &oauth2.Config{
 			ClientID:     config.TraktClientID,
 			ClientSecret: config.TraktClientSecret,
