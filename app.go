@@ -13,14 +13,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hacdias/indieauth"
 	"golang.org/x/oauth2"
 )
 
 type app struct {
 	*config
-	db     *database
-	oauth2 *oauth2.Config
-
+	db        *database
+	oauth2    *oauth2.Config
+	indieauth *indieauth.Client
 	importMu  sync.Mutex
 	importing map[string]bool
 }
@@ -29,6 +30,7 @@ func newApp(config *config) (*app, error) {
 	a := &app{
 		config:    config,
 		importing: map[string]bool{},
+		indieauth: indieauth.NewClient(config.BaseURL, config.BaseURL+"/callback", nil),
 		oauth2: &oauth2.Config{
 			ClientID:     config.TraktClientID,
 			ClientSecret: config.TraktClientSecret,
@@ -72,19 +74,8 @@ func (a *app) getTraktClient(user *user) (*http.Client, error) {
 	return a.oauth2.Client(context.Background(), user.TraktToken), nil
 }
 
-func (a *app) makeIndieAuthConfig(endpoints *endpoints) *oauth2.Config {
-	return &oauth2.Config{
-		ClientID:    a.BaseURL,
-		RedirectURL: a.BaseURL + "/callback",
-		Endpoint: oauth2.Endpoint{
-			AuthURL:  endpoints.IndieAuth,
-			TokenURL: endpoints.Tokens,
-		},
-	}
-}
-
 func (a *app) getMicropubClient(user *user) (*http.Client, error) {
-	oo := a.makeIndieAuthConfig(&user.Endpoints)
+	oo := a.indieauth.GetOAuth2(&user.IndieAuthEndpoints)
 	if user.IndieToken == nil {
 		return nil, errors.New("user does not have indie token")
 	}
@@ -259,7 +250,7 @@ func (a *app) sendMicropub(user *user, item traktHistoryItem) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "POST", user.Endpoints.Micropub, bytes.NewBuffer(data))
+	req, err := http.NewRequestWithContext(ctx, "POST", user.MicropubEndpoint, bytes.NewBuffer(data))
 	if err != nil {
 		return err
 	}

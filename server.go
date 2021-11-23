@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"embed"
 	"errors"
 	"log"
@@ -13,8 +12,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/sessions"
+	"github.com/hacdias/indieauth"
 	"github.com/unrolled/render"
-	"golang.org/x/oauth2"
 )
 
 const sessionKey = "ownyourtrakt"
@@ -121,26 +120,26 @@ func (s *server) loginGet(w http.ResponseWriter, r *http.Request) {
 	url.Path = "/"
 	me = url.String()
 
-	endpoints, err := discoverEndpoints(me)
+	authInfo, redirect, err := s.indieauth.Authenticate(me, "create")
 	if err != nil {
 		s.error(w, r, nil, http.StatusBadRequest, err)
 		return
 	}
 
-	state := randString(10)
+	micropub, err := s.indieauth.DiscoverEndpoint(me, "micropub")
+	if err != nil {
+		s.error(w, r, nil, http.StatusBadRequest, err)
+		return
+	}
 
 	_, session, ok := s.getUser(w, r)
 	if !ok {
 		return
 	}
 
-	session.Values["auth_state"] = state
-	session.Values["auth_me"] = me
-	scope := "create update"
-
-	oo := s.makeIndieAuthConfig(endpoints)
-
-	authURL := oo.AuthCodeURL(state, oauth2.SetAuthURLParam("scope", scope))
+	session.Values["auth_me"] = authInfo.Me
+	session.Values["auth_state"] = authInfo.State
+	session.Values["auth_code_verifier"] = authInfo.CodeVerifier
 
 	err = session.Save(r, w)
 	if err != nil {
@@ -152,16 +151,18 @@ func (s *server) loginGet(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		log.Printf("user %s already existed\n", me)
 		u.ProfileURL = me
-		u.Endpoints = *endpoints
+		u.MicropubEndpoint = micropub
+		u.IndieAuthEndpoints = authInfo.Endpoints
 	} else if s.DisableSignups {
 		s.error(w, r, nil, http.StatusForbidden, errors.New("new users are disabled"))
 		return
 	} else {
 		log.Printf("user %s is new or error fetching from the DB: %s\n", me, err)
 		u = &user{
-			ProfileURL:        me,
-			Endpoints:         *endpoints,
-			OldestFetchedTime: time.Now(),
+			ProfileURL:         me,
+			MicropubEndpoint:   micropub,
+			IndieAuthEndpoints: authInfo.Endpoints,
+			OldestFetchedTime:  time.Now(),
 		}
 		u.NewestFetchedTime = u.OldestFetchedTime
 	}
@@ -172,19 +173,12 @@ func (s *server) loginGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, authURL, http.StatusSeeOther)
+	http.Redirect(w, r, redirect, http.StatusSeeOther)
 }
 
 func (s *server) callbackGet(w http.ResponseWriter, r *http.Request) {
 	_, session, ok := s.getUser(w, r)
 	if !ok {
-		return
-	}
-
-	originalState, ok := session.Values["auth_state"].(string)
-	if !ok || originalState == "" {
-		// log in session was not started, go home
-		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
@@ -195,20 +189,17 @@ func (s *server) callbackGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	code := r.URL.Query().Get("code")
-	if code == "" {
-		s.error(w, r, nil, http.StatusBadRequest, errors.New("code was empty"))
+	state, ok := session.Values["auth_state"].(string)
+	if !ok {
+		// log in session was not started, go home
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
-	state := r.URL.Query().Get("state")
-	if state == "" {
-		s.error(w, r, nil, http.StatusBadRequest, errors.New("state was empty"))
-		return
-	}
-
-	if state != originalState {
-		s.error(w, r, nil, http.StatusBadRequest, errors.New("state was invalid"))
+	codeVerifier, ok := session.Values["auth_code_verifier"].(string)
+	if !ok {
+		// log in session was not started, go home
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
@@ -218,11 +209,22 @@ func (s *server) callbackGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	oo := s.makeIndieAuthConfig(&user.Endpoints)
+	authInfo := &indieauth.AuthInfo{
+		Me:           me,
+		State:        state,
+		CodeVerifier: codeVerifier,
+		Endpoints:    user.IndieAuthEndpoints,
+	}
 
-	tok, err := oo.Exchange(context.Background(), code)
+	code, err := s.indieauth.ValidateCallback(authInfo, r)
 	if err != nil {
-		s.error(w, r, nil, http.StatusInternalServerError, err)
+		s.error(w, r, nil, http.StatusBadRequest, err)
+		return
+	}
+
+	tok, _, err := s.indieauth.GetToken(authInfo, code)
+	if err != nil {
+		s.error(w, r, nil, http.StatusBadRequest, err)
 		return
 	}
 
@@ -235,8 +237,9 @@ func (s *server) callbackGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	delete(session.Values, "auth_state")
 	delete(session.Values, "auth_me")
+	delete(session.Values, "auth_state")
+	delete(session.Values, "auth_code_verifier")
 
 	err = session.Save(r, w)
 	if err != nil {
