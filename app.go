@@ -182,7 +182,7 @@ func (a *app) importTrakt(user *user, older bool, fetchNext bool) {
 
 		if err != nil {
 			log.Printf("%s - could not fetch trakt: %v\n", user.ProfileURL, err)
-			return
+			break
 		}
 
 		failed := false
