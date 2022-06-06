@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hacdias/indieauth"
+	"github.com/hacdias/indieauth/v2"
 	"golang.org/x/oauth2"
 )
 
@@ -75,7 +75,7 @@ func (a *app) getTraktClient(user *user) (*http.Client, error) {
 }
 
 func (a *app) getMicropubClient(user *user) (*http.Client, error) {
-	oo := a.indieauth.GetOAuth2(&user.IndieAuthEndpoints)
+	oo := a.indieauth.GetOAuth2(&user.IndieAuthMetadata)
 	if user.IndieToken == nil {
 		return nil, errors.New("user does not have indie token")
 	}

@@ -11,7 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/sessions"
-	"github.com/hacdias/indieauth"
+	"github.com/hacdias/indieauth/v2"
 	"github.com/unrolled/render"
 )
 
@@ -124,7 +124,7 @@ func (s *server) loginGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	micropub, err := s.indieauth.DiscoverEndpoint(me, "micropub")
+	micropub, err := s.indieauth.DiscoverLinkEndpoint(me, "micropub")
 	if err != nil {
 		s.error(w, r, nil, http.StatusBadRequest, err)
 		return
@@ -150,17 +150,17 @@ func (s *server) loginGet(w http.ResponseWriter, r *http.Request) {
 		log.Printf("user %s already existed\n", me)
 		u.ProfileURL = me
 		u.MicropubEndpoint = micropub
-		u.IndieAuthEndpoints = authInfo.Endpoints
+		u.IndieAuthMetadata = authInfo.Metadata
 	} else if s.DisableSignups {
 		s.error(w, r, nil, http.StatusForbidden, errors.New("new users are disabled"))
 		return
 	} else {
 		log.Printf("user %s is new or error fetching from the DB: %s\n", me, err)
 		u = &user{
-			ProfileURL:         me,
-			MicropubEndpoint:   micropub,
-			IndieAuthEndpoints: authInfo.Endpoints,
-			OldestFetchedTime:  time.Now(),
+			ProfileURL:        me,
+			MicropubEndpoint:  micropub,
+			IndieAuthMetadata: authInfo.Metadata,
+			OldestFetchedTime: time.Now(),
 		}
 		u.NewestFetchedTime = u.OldestFetchedTime
 	}
@@ -211,7 +211,7 @@ func (s *server) callbackGet(w http.ResponseWriter, r *http.Request) {
 		Me:           me,
 		State:        state,
 		CodeVerifier: codeVerifier,
-		Endpoints:    user.IndieAuthEndpoints,
+		Metadata:     user.IndieAuthMetadata,
 	}
 
 	code, err := s.indieauth.ValidateCallback(authInfo, r)
