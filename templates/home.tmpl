@@ -12,11 +12,11 @@
     </tr>
     <tr>
       <td>IndieAuth Endpoint</td>
-      <td><pre>{{ .User.IndieAuthEndpoints.Authorization }}</pre></td>
+      <td><pre>{{ .User.IndieAuthMetadata.AuthorizationEndpoint }}</pre></td>
     </tr>
     <tr>
       <td>Tokens Endpoint</td>
-      <td><pre>{{ .User.IndieAuthEndpoints.Token }}</pre></td>
+      <td><pre>{{ .User.IndieAuthMetadata.TokenEndpoint }}</pre></td>
     </tr>
     {{ with .User.IndieToken }}
     <tr>
